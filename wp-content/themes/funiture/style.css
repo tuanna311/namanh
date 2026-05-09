@@ -3296,3 +3296,52 @@ body .product-main {
 }
 
 /*Tin tuc*/
+
+/* ============================================================
+   Load More – Phân trang Dự án
+   Nút "Xem thêm dự án" và counter hiển thị số lượng
+   ============================================================ */
+
+.namanh-load-more-wrapper {
+    text-align: center;
+    margin: 30px 0 20px;
+    padding: 0 15px;
+}
+
+/* Nút chính */
+.namanh-load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    color: #282C5C;
+    border: 2px solid #282C5C;
+    border-radius: 999px;
+    padding: 10px 40px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
+    min-width: 200px;
+}
+
+.namanh-load-more-btn:hover:not(.is-loading) {
+    background-color: #282C5C;
+    color: #fff;
+}
+
+.namanh-load-more-btn.is-loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Counter: "Đang hiển thị X / Y dự án" */
+.namanh-load-more-count {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: #888;
+    letter-spacing: 0.2px;
+}
+
