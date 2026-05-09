@@ -487,6 +487,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 	";
 	wp_add_inline_script( 'aos-js', $aos_init_script );
+
+	// -------------------------------------------------------
+	// Phân trang Load More cho trang Dự án
+	// Truyền biến PHP sang JavaScript
+	// -------------------------------------------------------
+	wp_localize_script( 'namanh-custom-js', 'namanhVars', array(
+		'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+	) );
 }
 add_action('wp_enqueue_scripts', 'namanh_enqueue_scripts');
 
@@ -1265,3 +1273,346 @@ add_action('init', function() {
     remove_shortcode('blog_posts');
     add_shortcode('blog_posts', 'namanh_shortcode_latest_from_blog');
 });
+
+// ============================================================
+// PHÂN TRANG DỰ ÁN – LOAD MORE (AJAX)
+// Override shortcode [ux_portfolio] để thêm tính năng Load More
+// ============================================================
+
+/**
+ * Bước 1: Ghi đè shortcode [ux_portfolio] của Flatsome.
+ * Hook 'init' priority 20 để đảm bảo Flatsome đã đăng ký trước.
+ */
+add_action( 'init', 'namanh_override_ux_portfolio_shortcode', 20 );
+function namanh_override_ux_portfolio_shortcode() {
+	remove_shortcode( 'ux_portfolio' );
+	add_shortcode( 'ux_portfolio', 'namanh_portfolio_with_loadmore' );
+}
+
+/**
+ * Bước 2: Shortcode [ux_portfolio] mới – hỗ trợ phân trang Load More.
+ *
+ * Thuộc tính mới:
+ *   per_page="6"  – số item hiển thị ban đầu (mặc định 6)
+ *
+ * Luồng hoạt động:
+ *   1. Đếm tổng số item theo đúng bộ lọc (cat, ids, exclude)
+ *   2. Render per_page item đầu tiên bằng hàm gốc flatsome_portfolio_shortcode()
+ *   3. Nếu còn item, hiển thị nút "Xem thêm dự án"
+ */
+function namanh_portfolio_with_loadmore( $atts, $content = null, $tag = '' ) {
+	// Đếm instance trên mỗi trang để tạo ID duy nhất
+	static $portfolio_instance = 0;
+	$portfolio_instance++;
+
+	// Đặt _id cố định (không random) để JS có thể tìm container
+	if ( empty( $atts['_id'] ) ) {
+		$atts['_id'] = 'portfolio-du-an-' . $portfolio_instance;
+	}
+	$portfolio_id = $atts['_id'];
+
+	// Số item mỗi lần tải (mặc định: 6)
+	$per_page = isset( $atts['per_page'] ) ? absint( $atts['per_page'] ) : 6;
+	if ( $per_page < 1 ) $per_page = 6;
+
+	// --- Đếm tổng số item khớp với bộ lọc ---
+	$count_args = array(
+		'post_type'      => 'featured_item',
+		'post_status'    => 'publish',
+		'posts_per_page' => -1,
+		'fields'         => 'ids',
+	);
+
+	if ( ! empty( $atts['ids'] ) ) {
+		$count_args['post__in'] = array_map( 'absint', explode( ',', $atts['ids'] ) );
+	} else {
+		if ( ! empty( $atts['cat'] ) ) {
+			$count_args['tax_query'] = array( array(
+				'taxonomy' => 'featured_item_category',
+				'field'    => 'id',
+				'terms'    => array_map( 'absint', explode( ',', $atts['cat'] ) ),
+			) );
+		}
+		if ( ! empty( $atts['exclude'] ) ) {
+			$count_args['post__not_in'] = array_map( 'absint', explode( ',', $atts['exclude'] ) );
+		}
+	}
+
+	$count_q     = new WP_Query( $count_args );
+	$total_items = $count_q->found_posts;
+	wp_reset_postdata();
+
+	// --- Render per_page item đầu tiên bằng hàm gốc Flatsome ---
+	$render_atts           = $atts;
+	$render_atts['number'] = $per_page; // Giới hạn số item render ban đầu
+	// 'per_page' không có trong shortcode_atts của Flatsome nên sẽ bị bỏ qua tự động
+
+	$initial_html = flatsome_portfolio_shortcode( $render_atts, $content, $tag );
+
+	// --- Thêm nút Load More nếu còn item ---
+	$load_more_html = '';
+	if ( $total_items > $per_page ) {
+		// Encode các thuộc tính cần thiết để AJAX render đúng style
+		$ajax_atts = $atts;
+		unset( $ajax_atts['per_page'] ); // Loại bỏ attr custom
+		unset( $ajax_atts['_id'] );      // ID không cần thiết cho AJAX
+
+		$load_more_html = sprintf(
+			'<div class="namanh-load-more-wrapper" id="loadmore-wrapper-%1$s">
+				<button class="namanh-load-more-btn"
+					data-portfolio-id="%1$s"
+					data-offset="%2$d"
+					data-per-page="%2$d"
+					data-total="%3$d"
+					data-nonce="%4$s"
+					data-atts="%5$s"
+					aria-label="Tải thêm dự án">
+					<span class="namanh-btn-label">Xem thêm dự án</span>
+					<span class="namanh-btn-loading" style="display:none;">
+						<span class="loading-spin small dark"></span>&nbsp;Đang tải...
+					</span>
+				</button>
+				<p class="namanh-load-more-count">
+					Đang hiển thị <span class="shown">%2$d</span> / <span class="total">%3$d</span> dự án
+				</p>
+			</div>',
+			esc_attr( $portfolio_id ),                  // %1$s – portfolio ID
+			$per_page,                                  // %2$d – offset ban đầu = per_page
+			$total_items,                               // %3$d – tổng số item
+			wp_create_nonce( 'namanh_load_more_portfolio' ), // %4$s – nonce bảo mật
+			esc_attr( wp_json_encode( $ajax_atts ) )    // %5$s – atts JSON để AJAX dùng
+		);
+	}
+
+	return $initial_html . $load_more_html;
+}
+
+/**
+ * Bước 3: Helper – Render HTML một portfolio item.
+ * Phải được gọi TRONG WordPress loop (have_posts / the_post đã được gọi).
+ */
+function namanh_render_single_portfolio_item( $atts ) {
+	// Lấy style mặc định của theme nếu không truyền vào
+	$style = ! empty( $atts['style'] ) ? $atts['style'] : flatsome_option( 'portfolio_style' );
+
+	// Xây dựng các class CSS (giống hệt flatsome_portfolio_shortcode gốc)
+	$classes_box   = array( 'portfolio-box', 'box', 'has-hover' );
+	$classes_image = array();
+	$classes_text  = array( 'box-text' );
+
+	if ( $style )              $classes_box[] = 'box-' . $style;
+	if ( $style === 'overlay' ) {
+		$classes_box[] = 'dark';
+		if ( empty( $atts['image_overlay'] ) ) $atts['image_overlay'] = true;
+	}
+	if ( $style === 'shade' )  $classes_box[] = 'dark';
+	if ( $style === 'badge' )  $classes_box[] = 'hover-dark';
+	if ( ! empty( $atts['text_pos'] ) ) $classes_box[] = 'box-text-' . $atts['text_pos'];
+
+	$image_height = ! empty( $atts['image_height'] ) ? $atts['image_height'] : '100%';
+	if ( ! empty( $atts['image_hover'] ) )     $classes_image[] = 'image-' . $atts['image_hover'];
+	if ( ! empty( $atts['image_hover_alt'] ) ) $classes_image[] = 'image-' . $atts['image_hover_alt'];
+	if ( $image_height )                       $classes_image[] = 'image-cover';
+
+	$text_align = ! empty( $atts['text_align'] ) ? $atts['text_align'] : 'center';
+	if ( ! empty( $atts['text_hover'] ) ) $classes_text[] = 'show-on-hover hover-' . $atts['text_hover'];
+	if ( $text_align )                    $classes_text[] = 'text-' . $text_align;
+	if ( ! empty( $atts['text_size'] ) ) $classes_text[] = 'is-' . $atts['text_size'];
+	if ( isset( $atts['text_color'] ) && $atts['text_color'] === 'dark' ) $classes_text[] = 'dark';
+
+	// Inline CSS args (dùng helper get_shortcode_inline_css của Flatsome)
+	$image_radius = ! empty( $atts['image_radius'] ) ? $atts['image_radius'] : '';
+	$image_width  = ! empty( $atts['image_width'] )  ? $atts['image_width']  : '';
+	$text_bg      = ! empty( $atts['text_bg'] )      ? $atts['text_bg']      : '';
+	$text_padding = ! empty( $atts['text_padding'] )  ? $atts['text_padding']  : '';
+
+	$css_col = array(
+		array( 'attribute' => 'border-radius', 'value' => $image_radius, 'unit' => '%' ),
+	);
+	$css_args_img = array(
+		array( 'attribute' => 'border-radius', 'value' => $image_radius, 'unit' => '%' ),
+		array( 'attribute' => 'width',         'value' => $image_width,  'unit' => '%' ),
+	);
+	$css_image_height = array(
+		array( 'attribute' => 'padding-top', 'value' => $image_height ),
+	);
+	$css_args = array(
+		array( 'attribute' => 'background-color', 'value' => $text_bg ),
+		array( 'attribute' => 'padding',           'value' => $text_padding ),
+	);
+
+	// Animate attribute
+	$animate_attr = '';
+	if ( ! empty( $atts['animate'] ) ) {
+		$animate_attr = 'data-animate="' . esc_attr( $atts['animate'] ) . '"';
+	}
+
+	// Link và lightbox
+	$link         = get_permalink( get_the_ID() );
+	$has_lightbox = '';
+	if ( ! empty( $atts['lightbox'] ) && $atts['lightbox'] === 'true' ) {
+		$lb_size = ! empty( $atts['lightbox_image_size'] ) ? $atts['lightbox_image_size'] : 'original';
+		$lb_src  = wp_get_attachment_image_src( get_post_thumbnail_id(), $lb_size );
+		if ( $lb_src ) $link = $lb_src[0];
+		$has_lightbox = 'lightbox-gallery';
+	}
+
+	$image      = get_post_thumbnail_id();
+	$image_size = ! empty( $atts['image_size'] ) ? $atts['image_size'] : 'medium';
+	$image_overlay = isset( $atts['image_overlay'] ) ? $atts['image_overlay'] : '';
+
+	// Terms (cho filter nếu có dùng sau này)
+	$terms_str = strip_tags(
+		get_the_term_list( get_the_ID(), 'featured_item_category', '[&quot;', '&quot;,&quot;', '&quot;]' )
+	);
+
+	ob_start();
+	?>
+	<div class="col"
+	     data-terms="<?php echo $terms_str; ?>"
+	     <?php echo $animate_attr; ?>>
+		<div class="col-inner" <?php echo get_shortcode_inline_css( $css_col ); ?>>
+			<a href="<?php echo esc_url( $link ); ?>" class="plain <?php echo esc_attr( $has_lightbox ); ?>">
+				<div class="<?php echo esc_attr( implode( ' ', $classes_box ) ); ?>">
+					<div class="box-image" <?php echo get_shortcode_inline_css( $css_args_img ); ?>>
+						<div class="<?php echo esc_attr( implode( ' ', $classes_image ) ); ?>" <?php echo get_shortcode_inline_css( $css_image_height ); ?>>
+							<?php echo wp_get_attachment_image( $image, $image_size ); ?>
+							<?php if ( $image_overlay ) : ?>
+								<div class="overlay" style="background-color:<?php echo esc_attr( is_string( $image_overlay ) ? $image_overlay : '' ); ?>"></div>
+							<?php endif; ?>
+							<?php if ( $style === 'shade' ) : ?>
+								<div class="shade"></div>
+							<?php endif; ?>
+						</div>
+					</div>
+					<div class="<?php echo esc_attr( implode( ' ', $classes_text ) ); ?>" <?php echo get_shortcode_inline_css( $css_args ); ?>>
+						<div class="box-text-inner">
+							<h6 class="uppercase portfolio-box-title title-du-an2"><?php the_title(); ?></h6>
+							<?php
+							$address = get_post_meta( get_the_ID(), '_featured_item_address', true );
+							if ( $address ) :
+							?>
+								<p class="address-duan"><?php echo esc_html( $address ); ?></p>
+							<?php endif; ?>
+							<p class="uppercase portfolio-box-category is-xsmall op-6">
+								<span class="show-on-hover">
+									<?php echo strip_tags( get_the_term_list( get_the_ID(), 'featured_item_category', '', ', ' ) ); ?>
+								</span>
+							</p>
+						</div>
+					</div>
+				</div>
+			</a>
+		</div>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+
+/**
+ * Bước 4: AJAX Handler – Trả về HTML các item tiếp theo.
+ *
+ * POST params:
+ *   nonce    – wp_nonce
+ *   offset   – vị trí bắt đầu (số item đã hiển thị)
+ *   per_page – số item cần tải thêm
+ *   atts     – JSON string chứa shortcode attributes
+ */
+function namanh_ajax_load_more_portfolio() {
+	// Kiểm tra nonce bảo mật
+	if ( ! check_ajax_referer( 'namanh_load_more_portfolio', 'nonce', false ) ) {
+		wp_send_json_error( array( 'message' => 'Nonce không hợp lệ.' ), 403 );
+	}
+
+	// Sanitize tham số
+	$offset   = absint( $_POST['offset']   ?? 0 );
+	$per_page = absint( $_POST['per_page'] ?? 6 );
+	if ( $per_page < 1 || $per_page > 50 ) $per_page = 6;
+
+	$raw_atts = json_decode( stripslashes( $_POST['atts'] ?? '{}' ), true );
+	if ( ! is_array( $raw_atts ) ) $raw_atts = array();
+
+	// Sanitize query params từ atts
+	$cat     = sanitize_text_field( $raw_atts['cat']     ?? '' );
+	$orderby = sanitize_key( $raw_atts['orderby']        ?? 'menu_order' );
+	$order   = strtoupper( sanitize_text_field( $raw_atts['order'] ?? '' ) );
+	if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) $order = '';
+	$exclude = sanitize_text_field( $raw_atts['exclude'] ?? '' );
+	$ids_raw = sanitize_text_field( $raw_atts['ids']     ?? '' );
+
+	// Build query args
+	$args = array(
+		'post_type'      => 'featured_item',
+		'post_status'    => 'publish',
+		'posts_per_page' => $per_page,
+		'offset'         => $offset,
+		'orderby'        => $orderby,
+	);
+	if ( $order ) $args['order'] = $order;
+
+	if ( $ids_raw ) {
+		// Lọc theo ID cụ thể
+		$args['post__in'] = array_map( 'absint', explode( ',', $ids_raw ) );
+		$args['orderby']  = 'post__in';
+	} elseif ( $cat ) {
+		// Lọc theo taxonomy category
+		$args['tax_query'] = array( array(
+			'taxonomy' => 'featured_item_category',
+			'field'    => 'id',
+			'terms'    => array_map( 'absint', explode( ',', $cat ) ),
+		) );
+		if ( $exclude ) {
+			$args['post__not_in'] = array_map( 'absint', explode( ',', $exclude ) );
+		}
+	}
+
+	$query = new WP_Query( $args );
+
+	// Render HTML cho từng item
+	$html = '';
+	if ( $query->have_posts() ) {
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$html .= namanh_render_single_portfolio_item( $raw_atts );
+		}
+	}
+	wp_reset_postdata();
+
+	// Đếm tổng item (cùng bộ lọc, không phân trang) để biết còn không
+	$total_args = array(
+		'post_type'      => 'featured_item',
+		'post_status'    => 'publish',
+		'posts_per_page' => -1,
+		'fields'         => 'ids',
+	);
+	if ( $ids_raw ) {
+		$total_args['post__in'] = array_map( 'absint', explode( ',', $ids_raw ) );
+	} elseif ( $cat ) {
+		$total_args['tax_query'] = array( array(
+			'taxonomy' => 'featured_item_category',
+			'field'    => 'id',
+			'terms'    => array_map( 'absint', explode( ',', $cat ) ),
+		) );
+		if ( $exclude ) {
+			$total_args['post__not_in'] = array_map( 'absint', explode( ',', $exclude ) );
+		}
+	}
+	$total_q    = new WP_Query( $total_args );
+	$total      = $total_q->found_posts;
+	wp_reset_postdata();
+
+	$new_offset = $offset + $query->post_count;
+	$has_more   = $new_offset < $total;
+
+	wp_send_json_success( array(
+		'html'       => $html,        // HTML các item mới
+		'has_more'   => $has_more,    // Còn item không?
+		'new_offset' => $new_offset,  // Offset mới cho lần sau
+		'total'      => $total,       // Tổng số item
+	) );
+}
+
+// Đăng ký AJAX handler (cả logged-in và không login)
+add_action( 'wp_ajax_namanh_load_more_portfolio',        'namanh_ajax_load_more_portfolio' );
+add_action( 'wp_ajax_nopriv_namanh_load_more_portfolio', 'namanh_ajax_load_more_portfolio' );
+

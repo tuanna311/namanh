@@ -157,3 +157,125 @@ window.addEventListener('load', () => {
 
 // Xử lý khi user click vào link menu cùng trang (chỉ đổi hash)
 window.addEventListener('hashchange', activateTabFromHash);
+
+/**
+ * ============================================================
+ * Load More – Phân trang dự án (AJAX)
+ * Xử lý click nút "Xem thêm dự án" và append item vào lưới masonry
+ * ============================================================
+ */
+(function ($) {
+  'use strict';
+
+  $(document).on('click', '.namanh-load-more-btn', function () {
+    var $btn         = $(this);
+    var $wrapper     = $btn.closest('.namanh-load-more-wrapper');
+
+    // Ngăn double-click khi đang tải
+    if ($btn.hasClass('is-loading')) return;
+
+    var portfolioId = $btn.data('portfolio-id');
+    var offset      = parseInt($btn.data('offset'),   10);
+    var perPage     = parseInt($btn.data('per-page'), 10);
+    var total       = parseInt($btn.data('total'),    10);
+    var nonce       = $btn.data('nonce');
+    var atts        = $btn.attr('data-atts'); // Lấy raw string (jQuery không tự parse)
+
+    // Trạng thái đang tải
+    $btn.addClass('is-loading');
+    $btn.find('.namanh-btn-label').hide();
+    $btn.find('.namanh-btn-loading').show();
+
+    // Lấy AJAX URL từ biến PHP được truyền qua wp_localize_script
+    var ajaxUrl = (typeof namanhVars !== 'undefined') ? namanhVars.ajaxUrl : '/wp-admin/admin-ajax.php';
+
+    $.ajax({
+      url:  ajaxUrl,
+      type: 'POST',
+      data: {
+        action:   'namanh_load_more_portfolio',
+        nonce:    nonce,
+        offset:   offset,
+        per_page: perPage,
+        atts:     atts
+      },
+      success: function (response) {
+        if (!response.success) {
+          console.error('Load More Portfolio: Lỗi từ server', response);
+          resetBtn($btn);
+          return;
+        }
+
+        var data = response.data;
+
+        if (!data.html) {
+          resetBtn($btn);
+          return;
+        }
+
+        // Tìm masonry container bằng DOM traversal (tránh lỗi duplicate ID của Flatsome)
+        // Cấu trúc: [portfolio-element-wrapper] → [namanh-load-more-wrapper]
+        var $portfolioOuter = $wrapper.prev();
+        // Tìm inner masonry row có data-packery-options
+        var $container = $portfolioOuter.find('[data-packery-options]').first();
+        if (!$container.length) {
+          // Fallback: dùng ID selector nếu không tìm được qua DOM
+          $container = $('#' + portfolioId + '[data-packery-options]');
+        }
+        if (!$container.length) {
+          console.error('Load More Portfolio: Không tìm thấy masonry container');
+          resetBtn($btn);
+          return;
+        }
+
+        // Tạo jQuery elements từ HTML response
+        var $newItems = $(data.html);
+
+        // Append vào container masonry
+        $container.append($newItems);
+
+        // Reinit Packery (masonry) cho items mới
+        if ($.fn.packery && $container.data('packery')) {
+          $newItems.imagesLoaded(function () {
+            $container.packery('appended', $newItems);
+          });
+        } else if ($.fn.packery) {
+          // Packery chưa init trên container này – thử layout lại
+          $newItems.imagesLoaded(function () {
+            $container.packery({ originLeft: true });
+            $container.packery('layout');
+          });
+        }
+
+        // Cập nhật offset trên button
+        var newOffset = data.new_offset;
+        $btn.data('offset', newOffset);
+
+        // Cập nhật counter "Đang hiển thị X / Y dự án"
+        $wrapper.find('.shown').text(newOffset);
+
+        if (!data.has_more) {
+          // Đã tải hết – ẩn nút
+          $wrapper.fadeOut(300);
+        } else {
+          // Còn item – reset nút về trạng thái bình thường
+          resetBtn($btn);
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error('Load More Portfolio: AJAX error', status, error);
+        resetBtn($btn);
+      }
+    });
+  });
+
+  /**
+   * Reset trạng thái nút về bình thường
+   */
+  function resetBtn($btn) {
+    $btn.removeClass('is-loading');
+    $btn.find('.namanh-btn-label').show();
+    $btn.find('.namanh-btn-loading').hide();
+  }
+
+}(jQuery));
