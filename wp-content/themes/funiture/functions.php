@@ -453,6 +453,40 @@ function namanh_enqueue_scripts() {
 		'1.0', // Phiên bản
 		true // true = load ở footer
 	);
+
+	// -------------------------------------------------------
+	// AOS (Animate On Scroll) - CSS & JS
+	// -------------------------------------------------------
+
+	// 1. Đăng ký và đưa vào hàng đợi AOS CSS
+	wp_enqueue_style(
+		'aos-css',                                        // Handle
+		get_stylesheet_directory_uri() . '/css/aos.css', // Đường dẫn file CSS
+		array(),                                          // Không phụ thuộc style nào
+		'2.3.4'                                           // Phiên bản AOS
+	);
+
+	// 2. Đăng ký và đưa vào hàng đợi AOS JS
+	wp_enqueue_script(
+		'aos-js',                                        // Handle
+		get_stylesheet_directory_uri() . '/js/aos.js',  // Đường dẫn file JS
+		array(),                                         // Không phụ thuộc script nào
+		'2.3.4',                                         // Phiên bản AOS
+		true                                             // Load ở footer
+	);
+
+	// 3. Khởi tạo AOS bằng inline script sau khi file JS được tải
+	$aos_init_script = "
+document.addEventListener('DOMContentLoaded', function() {
+    AOS.init({
+        duration : 800,           // Thời gian animation (ms)
+        easing   : 'ease-in-out', // Kiểu easing
+        once     : true,          // Chỉ chạy animation 1 lần khi scroll xuống
+        offset   : 120            // Khoảng cách (px) từ đáy viewport để kích hoạt
+    });
+});
+	";
+	wp_add_inline_script( 'aos-js', $aos_init_script );
 }
 add_action('wp_enqueue_scripts', 'namanh_enqueue_scripts');
 
