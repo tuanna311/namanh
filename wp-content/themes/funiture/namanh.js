@@ -432,6 +432,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Chỉ thêm hiệu ứng nếu phần tử chưa có data-animate của Flatsome
         // để tránh xung đột hiệu ứng mặc định của theme
         if(!el.closest('[data-animate]') && !el.hasAttribute('data-animate')) {
+            // Lấy vị trí của khối so với khung nhìn hiện tại khi vừa load
+            const rect = el.getBoundingClientRect();
+            
+            // Nếu khối nằm trong hoặc sát khung nhìn đầu tiên (có thể đang hiển thị)
+            // ta KHÔNG áp dụng hiệu ứng để tránh khối bị giật hoặc biến mất rồi hiện lại
+            if (rect.top < window.innerHeight - 50) {
+                return; // Bỏ qua, để khối hiển thị bình thường
+            }
+            
+            // Chỉ thêm hiệu ứng cho các khối nằm bên dưới khung nhìn
             el.classList.add('namanh-reveal');
             revealObserver.observe(el);
         }

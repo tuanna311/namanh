@@ -1191,6 +1191,9 @@ body .portfolio-top .section {
 .category-page-row .large-3 ul li a:before {
 	content: "-";
 	padding-right: 6px;
+	background: transparent;
+	margin: 0;
+	top: 0;
 }
 
 .woocommerce-shop .box-text-products .name {
