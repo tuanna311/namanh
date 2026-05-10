@@ -392,3 +392,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+/**
+ * Hiệu ứng Scroll Reveal tương tự An Cường
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Các selector của các khối chính sẽ được áp dụng hiệu ứng (không áp dụng vào các phần tử quá nhỏ)
+    const selectors = [
+        '.section',
+        '.row:not(.row-small):not(.is-collapse)', // Tránh các row quá nhỏ bên trong
+        '.product-small',
+        '.box-blog-post',
+        '.namanh-showcase',
+        '.slider-chung-chi',
+        '.slider-the-manh',
+        '.block-cong-nghe',
+        '.ux-banner'
+    ];
+    
+    const revealElements = document.querySelectorAll(selectors.join(', '));
+    if(!revealElements.length) return;
+
+    // Cấu hình Intersection Observer
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                // Hủy theo dõi sau khi đã hiển thị
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '0px 0px -10% 0px', // Bắt đầu hiệu ứng khi khối cuộn vào viewport 10%
+        threshold: 0
+    });
+
+    revealElements.forEach(el => {
+        // Chỉ thêm hiệu ứng nếu phần tử chưa có data-animate của Flatsome
+        // để tránh xung đột hiệu ứng mặc định của theme
+        if(!el.closest('[data-animate]') && !el.hasAttribute('data-animate')) {
+            el.classList.add('namanh-reveal');
+            revealObserver.observe(el);
+        }
+    });
+});

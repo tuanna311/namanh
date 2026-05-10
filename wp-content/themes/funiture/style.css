@@ -2065,6 +2065,10 @@ span.widget-title {
 	margin-bottom: 25px
 }
 
+.widget_layered_nav>ul>li .count {
+	display: none;
+}
+
 .tagcloud a {
 	margin-bottom: 6px;
 	font-size: 13px !important;
@@ -3769,4 +3773,17 @@ body .product-main {
 .nav-top-link:hover .roll-text-inner,
 a.nav-top-link:hover .roll-text-inner {
 	transform: translateY(-100%);
+}
+
+/* Hiệu ứng Scroll Reveal tương tự An Cường */
+.namanh-reveal {
+	opacity: 0;
+	transform: translateY(40px);
+	transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	will-change: opacity, transform;
+}
+
+.namanh-reveal.is-visible {
+	opacity: 1;
+	transform: translateY(0);
 }
