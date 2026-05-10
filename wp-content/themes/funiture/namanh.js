@@ -351,3 +351,44 @@ window.addEventListener('load', () => {
   }
 
 }(jQuery));
+
+/**
+ * Xử lý hiệu ứng cuộn text cho menu có class nav-top-link
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('.nav-top-link > a, a.nav-top-link');
+  
+  navLinks.forEach(link => {
+    // Tránh áp dụng nhiều lần
+    if (link.querySelector('.roll-text-container')) return;
+
+    // Tìm text node
+    let textNode = null;
+    let textString = '';
+    
+    for (let i = 0; i < link.childNodes.length; i++) {
+      let node = link.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+        textNode = node;
+        textString = node.textContent.trim();
+        break;
+      }
+    }
+
+    if (textNode) {
+      // Tạo wrapper
+      const container = document.createElement('span');
+      container.className = 'roll-text-container';
+      
+      const inner = document.createElement('span');
+      inner.className = 'roll-text-inner';
+      inner.setAttribute('data-text', textString);
+      inner.textContent = textString;
+      
+      container.appendChild(inner);
+      
+      // Thay thế textNode bằng container
+      link.replaceChild(container, textNode);
+    }
+  });
+});

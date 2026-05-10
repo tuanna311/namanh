@@ -3742,3 +3742,31 @@ body .product-main {
 	color: #888;
 	letter-spacing: 0.2px;
 }
+
+/* Hiệu ứng cuộn text cho nav-top-link */
+.roll-text-container {
+	display: inline-flex;
+	overflow: hidden;
+	vertical-align: middle;
+}
+
+.roll-text-inner {
+	position: relative;
+	display: inline-block;
+	transition: transform 0.4s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.roll-text-inner::after {
+	content: attr(data-text);
+	position: absolute;
+	top: 100%;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+.nav-top-link:hover .roll-text-inner,
+a.nav-top-link:hover .roll-text-inner {
+	transform: translateY(-100%);
+}
