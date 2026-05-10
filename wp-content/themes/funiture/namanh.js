@@ -131,15 +131,15 @@ function activateTabFromHash() {
   try {
     // Decode hash để xử lý tiếng Việt (ví dụ: #tab_cẩm-nang)
     const decodedHash = decodeURIComponent(hash);
-    
+
     // Tìm link tab trong cấu trúc Flatsome/UX Builder (.tabbed-content .nav a)
     // Thử nhiều selector phổ biến để đảm bảo hoạt động
     const tabLink = document.querySelector(`.tabbed-content .nav a[href="${decodedHash}"], .nav-link[href="${decodedHash}"], a[data-toggle="tab"][href="${decodedHash}"]`);
-    
+
     if (tabLink) {
       // Trigger click để kích hoạt logic chuyển tab của theme
       tabLink.click();
-      
+
       // Cuộn lên đầu trang theo yêu cầu của người dùng
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -159,6 +159,78 @@ window.addEventListener('load', () => {
 window.addEventListener('hashchange', activateTabFromHash);
 
 /**
+ * Xử lý Showcase Sản phẩm (Tab và Hover ảnh)
+ */
+function initNamanhShowcase() {
+  const showcase = document.querySelector('.namanh-showcase');
+  if (!showcase) return;
+
+  const tabBtns = showcase.querySelectorAll('.showcase-tab-btn');
+  const panels = showcase.querySelectorAll('.showcase-panel');
+
+  // Xử lý chuyển TAB
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const targetId = this.getAttribute('data-target');
+
+      // Update nút tab
+      tabBtns.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      // Update panel nội dung
+      panels.forEach(p => p.classList.remove('active'));
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+    });
+  });
+
+  // Xử lý HOVER các mục con để đổi ảnh (Desktop)
+  showcase.addEventListener('mouseover', function (e) {
+    // Chỉ xử lý trên màn hình lớn
+    if (window.innerWidth <= 850) return;
+
+    const item = e.target.closest('.subcat-item');
+    if (!item) return;
+
+    const panel = item.closest('.showcase-panel');
+    if (!panel) return;
+
+    const items = Array.from(panel.querySelectorAll('.subcat-item'));
+    const previews = Array.from(panel.querySelectorAll('.image-preview'));
+    const index = items.indexOf(item);
+
+    if (index !== -1) {
+      // Update active class cho menu bên trái
+      items.forEach(si => si.classList.remove('active'));
+      item.classList.add('active');
+
+      // Update active class cho các khối image-preview bên phải
+      previews.forEach((p, pIndex) => {
+        if (pIndex === index) {
+          p.classList.add('active');
+        } else {
+          p.classList.remove('active');
+        }
+      });
+    }
+  });
+}
+
+// Chạy khi DOM sẵn sàng
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNamanhShowcase);
+} else {
+  initNamanhShowcase();
+}
+
+// Chạy lại sau một khoảng thời gian ngắn để đảm bảo UX Builder đã render xong
+window.addEventListener('load', () => {
+  setTimeout(initNamanhShowcase, 500);
+});
+
+/**
  * ============================================================
  * Load More – Phân trang dự án (AJAX)
  * Xử lý click nút "Xem thêm dự án" và append item vào lưới masonry
@@ -168,18 +240,18 @@ window.addEventListener('hashchange', activateTabFromHash);
   'use strict';
 
   $(document).on('click', '.namanh-load-more-btn', function () {
-    var $btn         = $(this);
-    var $wrapper     = $btn.closest('.namanh-load-more-wrapper');
+    var $btn = $(this);
+    var $wrapper = $btn.closest('.namanh-load-more-wrapper');
 
     // Ngăn double-click khi đang tải
     if ($btn.hasClass('is-loading')) return;
 
     var portfolioId = $btn.data('portfolio-id');
-    var offset      = parseInt($btn.data('offset'),   10);
-    var perPage     = parseInt($btn.data('per-page'), 10);
-    var total       = parseInt($btn.data('total'),    10);
-    var nonce       = $btn.data('nonce');
-    var atts        = $btn.attr('data-atts'); // Lấy raw string (jQuery không tự parse)
+    var offset = parseInt($btn.data('offset'), 10);
+    var perPage = parseInt($btn.data('per-page'), 10);
+    var total = parseInt($btn.data('total'), 10);
+    var nonce = $btn.data('nonce');
+    var atts = $btn.attr('data-atts'); // Lấy raw string (jQuery không tự parse)
 
     // Trạng thái đang tải
     $btn.addClass('is-loading');
@@ -190,14 +262,14 @@ window.addEventListener('hashchange', activateTabFromHash);
     var ajaxUrl = (typeof namanhVars !== 'undefined') ? namanhVars.ajaxUrl : '/wp-admin/admin-ajax.php';
 
     $.ajax({
-      url:  ajaxUrl,
+      url: ajaxUrl,
       type: 'POST',
       data: {
-        action:   'namanh_load_more_portfolio',
-        nonce:    nonce,
-        offset:   offset,
+        action: 'namanh_load_more_portfolio',
+        nonce: nonce,
+        offset: offset,
         per_page: perPage,
-        atts:     atts
+        atts: atts
       },
       success: function (response) {
         if (!response.success) {
