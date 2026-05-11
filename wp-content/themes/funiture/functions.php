@@ -549,7 +549,8 @@ function namanh_build_pagination_html( $current_page, $total_pages ) {
 
 	// Nút Previous
 	$prev_disabled = ( $current_page <= 1 ) ? ' disabled' : '';
-	$html .= '<button class="namanh-page-btn namanh-page-prev" data-page="' . max( 1, $current_page - 1 ) . '"' . $prev_disabled . '></button>';
+	$prev_hidden = ( $current_page <= 1 ) ? ' style="display: none !important;"' : '';
+	$html .= '<button class="namanh-page-btn namanh-page-prev" data-page="' . max( 1, $current_page - 1 ) . '"' . $prev_disabled . $prev_hidden . '></button>';
 
 	// Các số trang
 	for ( $i = 1; $i <= $total_pages; $i++ ) {
@@ -559,7 +560,8 @@ function namanh_build_pagination_html( $current_page, $total_pages ) {
 
 	// Nút Next
 	$next_disabled = ( $current_page >= $total_pages ) ? ' disabled' : '';
-	$html .= '<button class="namanh-page-btn namanh-page-next" data-page="' . min( $total_pages, $current_page + 1 ) . '"' . $next_disabled . '></button>';
+	$next_hidden = ( $current_page >= $total_pages ) ? ' style="display: none !important;"' : '';
+	$html .= '<button class="namanh-page-btn namanh-page-next" data-page="' . min( $total_pages, $current_page + 1 ) . '"' . $next_disabled . $next_hidden . '></button>';
 
 	$html .= '</div>';
 	return $html;
