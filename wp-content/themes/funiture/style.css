@@ -3740,28 +3740,29 @@ body .product-main {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
 	margin: 36px 0 20px;
 	flex-wrap: wrap;
+	width: 100%;
 }
 
 /* Nút chung (số và prev/next) */
 .namanh-portfolio-pagination .namanh-page-btn {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 40px;
-	height: 40px;
+	height: 33px;
+	width: 33px;
+	min-height: 33px;
 	border-radius: 50%;
-	border: 1.5px solid #282C5C;
+	border: 2px solid currentColor;
 	background: transparent;
 	color: #282C5C;
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
 	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-	flex-shrink: 0;
-	line-height: 1;
+	margin-right: 6px;
+	padding: 0;
 }
 
 /* Hover trên số trang (không áp lên nút disabled) */
@@ -3840,7 +3841,9 @@ body .product-main {
 }
 
 @keyframes namanh-spin {
-	to { transform: rotate(360deg); }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* Hiệu ứng cuộn text cho nav-top-link */
