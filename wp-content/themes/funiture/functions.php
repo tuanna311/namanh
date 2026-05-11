@@ -1247,6 +1247,7 @@ function namanh_shortcode_latest_from_blog($atts, $content = null, $tag = '' ) {
 
 		// posts
 		'posts' => '8',
+		'paginate' => '',
 		'ids' => false, // Custom IDs
 		'cat' => '',
 		'category' => '', // Added for Flatsome v2 fallback
@@ -1296,6 +1297,20 @@ function namanh_shortcode_latest_from_blog($atts, $content = null, $tag = '' ) {
 
 	// Stop if visibility is hidden
   if($visibility == 'hidden') return;
+
+	// Bắt buộc 6 bài và bật phân trang nếu ở trang tin-tuc
+	$is_tin_tuc_page = is_page('tin-tuc');
+	$is_blog_ajax = (wp_doing_ajax() && isset($_POST['action']) && $_POST['action'] === 'namanh_blog_page');
+	
+	if ( $is_tin_tuc_page || $is_blog_ajax ) {
+		$posts = 6;
+	}
+
+	if ( $is_tin_tuc_page && !$is_blog_ajax ) {
+		$paginate = 'true';
+	} else if ( $paginate === '' ) {
+		$paginate = 'false';
+	}
 
 	ob_start();
 
@@ -1422,6 +1437,16 @@ function namanh_shortcode_latest_from_blog($atts, $content = null, $tag = '' ) {
 
 $recentPosts = new WP_Query( $args );
 
+// Calculate pages
+$total_pages = $recentPosts->max_num_pages;
+
+if ($paginate == 'true' && $total_pages > 1) {
+    $nonce = wp_create_nonce( 'namanh_blog_page' );
+    $atts_json = esc_attr( wp_json_encode( $atts ) );
+    echo '<div class="namanh-blog-paged-wrapper" data-blog-id="' . esc_attr($_id) . '" data-per-page="' . esc_attr($posts) . '" data-total-pages="' . $total_pages . '" data-current-page="1" data-nonce="' . $nonce . '" data-atts="' . $atts_json . '">';
+    echo '<div class="namanh-blog-grid-area">';
+}
+
 // Get repeater HTML.
 get_flatsome_repeater_start($repeater);
 
@@ -1531,6 +1556,12 @@ wp_reset_query();
 // Get repeater end.
 get_flatsome_repeater_end($atts);
 
+if ($paginate == 'true' && $total_pages > 1) {
+    echo '</div>'; // close .namanh-blog-grid-area
+    echo namanh_build_pagination_html( 1, $total_pages );
+    echo '</div>'; // close .namanh-blog-paged-wrapper
+}
+
 $content = ob_get_contents();
 ob_end_clean();
 return $content;
@@ -1540,6 +1571,66 @@ add_action('init', function() {
     remove_shortcode('blog_posts');
     add_shortcode('blog_posts', 'namanh_shortcode_latest_from_blog');
 });
+
+/**
+ * AJAX handler cho Blog Pagination
+ */
+function namanh_ajax_blog_page() {
+	if ( ! check_ajax_referer( 'namanh_blog_page', 'nonce', false ) ) {
+		wp_send_json_error( array( 'message' => 'Nonce không hợp lệ.' ), 403 );
+	}
+
+	$page     = max( 1, absint( $_POST['page']     ?? 1 ) );
+	$per_page = max( 1, absint( $_POST['per_page'] ?? 6 ) );
+	$raw_atts = json_decode( stripslashes( $_POST['atts'] ?? '{}' ), true );
+	if ( ! is_array( $raw_atts ) ) {
+		$raw_atts = array();
+	}
+
+	$offset = ( $page - 1 ) * $per_page;
+	
+	// Add offset attribute to fetch correct page
+	$raw_atts['offset'] = $offset;
+	$raw_atts['posts'] = $per_page;
+	$raw_atts['paginate'] = 'false'; // Ngăn chặn loop vô hạn HTML pagination
+
+	// Get HTML for this page
+	$html = namanh_shortcode_latest_from_blog( $raw_atts );
+
+	// Calculate total pages for pagination
+	$count_args = array(
+		'post_status' => 'publish',
+		'post_type' => 'post',
+		'cat' => $raw_atts['cat'] ?? '',
+		'posts_per_page' => -1,
+		'fields' => 'ids',
+	);
+	if ( !empty( $raw_atts['ids'] ) ) {
+		$ids = explode( ',', $raw_atts['ids'] );
+		$ids = array_map( 'trim', $ids );
+		$count_args['post__in'] = $ids;
+		$count_args['post_type'] = array('post', 'featured_item');
+	}
+	if ( get_theme_mod('flatsome_fallback', 0) && !empty($raw_atts['category']) ) {
+		$count_args['category_name'] = $raw_atts['category'];
+	}
+
+	$count_query = new WP_Query( $count_args );
+	$total_items = $count_query->found_posts;
+	$total_pages = ( $per_page > 0 ) ? ceil( $total_items / $per_page ) : 1;
+	wp_reset_postdata();
+
+	$pagination_html = namanh_build_pagination_html( $page, $total_pages );
+
+	wp_send_json_success( array(
+		'html'            => $html,
+		'pagination_html' => $pagination_html,
+		'page'            => (int) $page,
+		'total_pages'     => (int) $total_pages,
+	) );
+}
+add_action( 'wp_ajax_namanh_blog_page',        'namanh_ajax_blog_page' );
+add_action( 'wp_ajax_nopriv_namanh_blog_page', 'namanh_ajax_blog_page' );
 
 /**
  * Shortcode hiển thị Showcase Sản phẩm với Tab và Hover ảnh

@@ -349,6 +349,82 @@ window.addEventListener('load', () => {
     });
   });
 
+  /**
+   * Xử lý click phân trang cho Blog / Tin tức
+   */
+  $(document).on('click', '.namanh-blog-paged-wrapper .namanh-portfolio-pagination .namanh-page-btn', function () {
+    var $btn    = $(this);
+    if ($btn.prop('disabled') || $btn.hasClass('active')) return;
+
+    var $wrapper  = $btn.closest('.namanh-blog-paged-wrapper');
+    if (!$wrapper.length) return;
+
+    var $gridArea = $wrapper.find('.namanh-blog-grid-area');
+    var page      = parseInt($btn.data('page'), 10);
+    var perPage   = parseInt($wrapper.data('per-page'), 10);
+    var nonce     = $wrapper.data('nonce');
+    var atts      = $wrapper.attr('data-atts');
+    var ajaxUrl   = (typeof namanhVars !== 'undefined') ? namanhVars.ajaxUrl : '/wp-admin/admin-ajax.php';
+
+    $gridArea.addClass('is-loading');
+    $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', true);
+
+    $.ajax({
+      url: ajaxUrl,
+      type: 'POST',
+      data: {
+        action:   'namanh_blog_page',
+        nonce:    nonce,
+        page:     page,
+        per_page: perPage,
+        atts:     atts
+      },
+      success: function (response) {
+        $gridArea.removeClass('is-loading');
+
+        if (!response.success || !response.data) {
+          $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', false);
+          return;
+        }
+
+        var data = response.data;
+        $wrapper.attr('data-current-page', data.page || page);
+        if (typeof data.total_pages !== 'undefined') {
+          $wrapper.attr('data-total-pages', data.total_pages);
+        }
+
+        var $currentPagination = $wrapper.find('.namanh-portfolio-pagination');
+        if ($currentPagination.length) {
+          if (data.pagination_html && data.pagination_html.trim() !== '') {
+            $currentPagination.replaceWith(data.pagination_html);
+          } else {
+            $currentPagination.remove();
+          }
+        } else if (data.pagination_html && data.pagination_html.trim() !== '') {
+          $wrapper.append(data.pagination_html);
+        }
+
+        if (data.html) {
+          $gridArea.html(data.html);
+          // Kích hoạt lại hiệu ứng Scroll Reveal cho nội dung mới load (nếu cần)
+          // Tương tự animate của flatsome
+          if (typeof window.Flatsome !== 'undefined' && Flatsome.attach) {
+            Flatsome.attach($gridArea);
+          }
+        }
+
+        // Cuộn lên đầu blog wrapper
+        $('html, body').animate({
+          scrollTop: $wrapper.offset().top - 80
+        }, 300);
+      },
+      error: function () {
+        $gridArea.removeClass('is-loading');
+        $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', false);
+      }
+    });
+  });
+
 }(jQuery));
 
 /**

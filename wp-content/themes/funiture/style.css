@@ -3032,6 +3032,13 @@ body .product-main {
 	transition: all 0.3s ease;
 }
 
+.tin-tuc-listing .blog-post-inner .post-title {
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
 .tin-tuc-listing .post-item .box-blog-post .box-image {
 	border-radius: 10px 10px 0 0;
 }
@@ -3808,11 +3815,13 @@ body .product-main {
 }
 
 /* ── Loading overlay ── */
-.namanh-portfolio-grid-area {
+.namanh-portfolio-grid-area,
+.namanh-blog-grid-area {
 	position: relative;
 }
 
-.namanh-portfolio-grid-area.is-loading::after {
+.namanh-portfolio-grid-area.is-loading::after,
+.namanh-blog-grid-area.is-loading::after {
 	content: '';
 	position: absolute;
 	inset: 0;
@@ -3822,7 +3831,8 @@ body .product-main {
 }
 
 /* Spinner vòng tròn */
-.namanh-portfolio-grid-area.is-loading::before {
+.namanh-portfolio-grid-area.is-loading::before,
+.namanh-blog-grid-area.is-loading::before {
 	content: '';
 	position: absolute;
 	top: 50%;
