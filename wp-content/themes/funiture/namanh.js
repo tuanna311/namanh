@@ -232,123 +232,122 @@ window.addEventListener('load', () => {
 
 /**
  * ============================================================
- * Load More – Phân trang dự án (AJAX)
- * Xử lý click nút "Xem thêm dự án" và append item vào lưới masonry
+ * Phân trang số – Portfolio Dự án (AJAX)
+ * Xử lý click số trang / nút prev-next, thay toàn bộ lưới
  * ============================================================
  */
 (function ($) {
   'use strict';
 
-  $(document).on('click', '.namanh-load-more-btn', function () {
-    var $btn = $(this);
-    var $wrapper = $btn.closest('.namanh-load-more-wrapper');
+  $(document).on('click', '.namanh-portfolio-pagination .namanh-page-btn', function () {
+    var $btn    = $(this);
+    if ($btn.prop('disabled') || $btn.hasClass('active')) return;
 
-    // Ngăn double-click khi đang tải
-    if ($btn.hasClass('is-loading')) return;
+    // Lấy wrapper và thông tin cần thiết trước khi AJAX
+    var $wrapper  = $btn.closest('.namanh-portfolio-paged-wrapper');
+    if (!$wrapper.length) return;
 
-    var portfolioId = $btn.data('portfolio-id');
-    var offset = parseInt($btn.data('offset'), 10);
-    var perPage = parseInt($btn.data('per-page'), 10);
-    var total = parseInt($btn.data('total'), 10);
-    var nonce = $btn.data('nonce');
-    var atts = $btn.attr('data-atts'); // Lấy raw string (jQuery không tự parse)
+    var $gridArea = $wrapper.find('.namanh-portfolio-grid-area');
+    var page      = parseInt($btn.data('page'), 10);
+    var perPage   = parseInt($wrapper.data('per-page'), 10);
+    var nonce     = $wrapper.data('nonce');
+    var atts      = $wrapper.attr('data-atts');
+    var ajaxUrl   = (typeof namanhVars !== 'undefined') ? namanhVars.ajaxUrl : '/wp-admin/admin-ajax.php';
 
-    // Trạng thái đang tải
-    $btn.addClass('is-loading');
-    $btn.find('.namanh-btn-label').hide();
-    $btn.find('.namanh-btn-loading').show();
-
-    // Lấy AJAX URL từ biến PHP được truyền qua wp_localize_script
-    var ajaxUrl = (typeof namanhVars !== 'undefined') ? namanhVars.ajaxUrl : '/wp-admin/admin-ajax.php';
+    // Hiệu ứng loading
+    $gridArea.addClass('is-loading');
+    $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', true);
 
     $.ajax({
       url: ajaxUrl,
       type: 'POST',
       data: {
-        action: 'namanh_load_more_portfolio',
-        nonce: nonce,
-        offset: offset,
+        action:   'namanh_portfolio_page',
+        nonce:    nonce,
+        page:     page,
         per_page: perPage,
-        atts: atts
+        atts:     atts
       },
       success: function (response) {
-        if (!response.success) {
-          console.error('Load More Portfolio: Lỗi từ server', response);
-          resetBtn($btn);
+        $gridArea.removeClass('is-loading');
+
+        if (!response.success || !response.data) {
+          // Restore buttons nếu lỗi
+          $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', false);
+          console.error('Portfolio Pagination: Lỗi server', response);
           return;
         }
 
         var data = response.data;
+        
+        // Debug logging (có thể comment out sau)
+        // console.log('Portfolio AJAX Response:', {
+        //   page: data.page,
+        //   total_pages: data.total_pages,
+        //   total_items: data.total_items,
+        //   has_pagination_html: !!data.pagination_html
+        // });
 
-        if (!data.html) {
-          resetBtn($btn);
-          return;
+        // Cập nhật current page và total pages trên wrapper
+        $wrapper.attr('data-current-page', data.page || page);
+        if (typeof data.total_pages !== 'undefined') {
+          $wrapper.attr('data-total-pages', data.total_pages);
         }
 
-        // Tìm masonry container bằng DOM traversal (tránh lỗi duplicate ID của Flatsome)
-        // Cấu trúc: [portfolio-element-wrapper] → [namanh-load-more-wrapper]
-        var $portfolioOuter = $wrapper.prev();
-        // Tìm inner masonry row có data-packery-options
-        var $container = $portfolioOuter.find('[data-packery-options]').first();
-        if (!$container.length) {
-          // Fallback: dùng ID selector nếu không tìm được qua DOM
-          $container = $('#' + portfolioId + '[data-packery-options]');
-        }
-        if (!$container.length) {
-          console.error('Load More Portfolio: Không tìm thấy masonry container');
-          resetBtn($btn);
-          return;
-        }
-
-        // Tạo jQuery elements từ HTML response
-        var $newItems = $(data.html);
-
-        // Append vào container masonry
-        $container.append($newItems);
-
-        // Reinit Packery (masonry) cho items mới
-        if ($.fn.packery && $container.data('packery')) {
-          $newItems.imagesLoaded(function () {
-            $container.packery('appended', $newItems);
-          });
-        } else if ($.fn.packery) {
-          // Packery chưa init trên container này – thử layout lại
-          $newItems.imagesLoaded(function () {
-            $container.packery({ originLeft: true });
-            $container.packery('layout');
-          });
+        // Thay thế pagination bằng HTML mới từ server
+        var $currentPagination = $wrapper.find('.namanh-portfolio-pagination');
+        if ($currentPagination.length) {
+          if (data.pagination_html && data.pagination_html.trim() !== '') {
+            // Có HTML pagination mới → replace
+            $currentPagination.replaceWith(data.pagination_html);
+          } else {
+            // Không có pagination (total_pages <= 1) → xóa pagination cũ
+            $currentPagination.remove();
+          }
+        } else if (data.pagination_html && data.pagination_html.trim() !== '') {
+          // Chưa có pagination element nhưng response có HTML → append vào wrapper
+          $wrapper.append(data.pagination_html);
         }
 
-        // Cập nhật offset trên button
-        var newOffset = data.new_offset;
-        $btn.data('offset', newOffset);
+        // Tìm masonry container bên trong grid area
+        var $container = $gridArea.find('[data-packery-options]').first();
 
-        // Cập nhật counter "Đang hiển thị X / Y dự án"
-        $wrapper.find('.shown').text(newOffset);
+        if ($container.length && data.html) {
+          $container.empty();
+          var $newItems = $(data.html);
+          $container.append($newItems);
 
-        if (!data.has_more) {
-          // Đã tải hết – ẩn nút
-          $wrapper.fadeOut(300);
-        } else {
-          // Còn item – reset nút về trạng thái bình thường
-          resetBtn($btn);
+          if ($.fn.packery) {
+            if (typeof imagesLoaded !== 'undefined') {
+              imagesLoaded($container[0], function () {
+                if ($container.data('packery')) {
+                  $container.packery('layout');
+                } else {
+                  $container.packery({ originLeft: true });
+                }
+              });
+            } else {
+              if ($container.data('packery')) {
+                $container.packery('layout');
+              }
+            }
+          }
+        } else if (data.html) {
+          $gridArea.html(data.html);
         }
+
+        // Cuộn lên đầu portfolio wrapper
+        $('html, body').animate({
+          scrollTop: $wrapper.offset().top - 80
+        }, 300);
       },
       error: function (xhr, status, error) {
-        console.error('Load More Portfolio: AJAX error', status, error);
-        resetBtn($btn);
+        $gridArea.removeClass('is-loading');
+        $wrapper.find('.namanh-portfolio-pagination .namanh-page-btn').prop('disabled', false);
+        console.error('Portfolio Pagination: AJAX error', status, error);
       }
     });
   });
-
-  /**
-   * Reset trạng thái nút về bình thường
-   */
-  function resetBtn($btn) {
-    $btn.removeClass('is-loading');
-    $btn.find('.namanh-btn-label').show();
-    $btn.find('.namanh-btn-loading').hide();
-  }
 
 }(jQuery));
 

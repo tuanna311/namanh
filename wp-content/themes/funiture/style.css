@@ -3723,51 +3723,124 @@ body .product-main {
 }
 
 /* ============================================================
-   Load More – Phân trang Dự án
-   Nút "Xem thêm dự án" và counter hiển thị số lượng
+   Phân trang số – Portfolio Dự án
+   Số trang + nút Prev/Next kiểu circle như ảnh thiết kế
    ============================================================ */
 
-.namanh-load-more-wrapper {
-	text-align: center;
-	margin: 30px 0 20px;
-	padding: 0 15px;
+.namanh-portfolio-paged-wrapper {
+	position: relative;
 }
 
-/* Nút chính */
-.namanh-load-more-btn {
-	display: inline-flex;
+.namanh-portfolio-grid-area {
+	transition: opacity 0.25s ease;
+}
+
+/* Hàng pagination */
+.namanh-portfolio-pagination {
+	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
+	margin: 36px 0 20px;
+	flex-wrap: wrap;
+}
+
+/* Nút chung (số và prev/next) */
+.namanh-portfolio-pagination .namanh-page-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 1.5px solid #282C5C;
 	background: transparent;
 	color: #282C5C;
-	border: 2px solid #282C5C;
-	border-radius: 999px;
-	padding: 10px 40px;
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 600;
-	letter-spacing: 0.3px;
 	cursor: pointer;
-	transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
-	min-width: 200px;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+	flex-shrink: 0;
+	line-height: 1;
 }
 
-.namanh-load-more-btn:hover:not(.is-loading) {
+/* Hover trên số trang (không áp lên nút disabled) */
+.namanh-portfolio-pagination .namanh-page-btn:hover:not(:disabled):not(.active) {
+	background-color: rgba(40, 44, 92, 0.1);
+}
+
+/* Trang đang active – nền đặc */
+.namanh-portfolio-pagination .namanh-page-btn.active {
 	background-color: #282C5C;
 	color: #fff;
+	border-color: #282C5C;
+	cursor: default;
 }
 
-.namanh-load-more-btn.is-loading {
-	opacity: 0.7;
+/* Nút bị disable (prev/next khi đầu/cuối) */
+.namanh-portfolio-pagination .namanh-page-btn:disabled {
+	opacity: 0.35;
 	cursor: not-allowed;
+	border-color: #aaa;
+	color: #aaa;
 }
 
-/* Counter: "Đang hiển thị X / Y dự án" */
-.namanh-load-more-count {
-	margin: 12px 0 0;
-	font-size: 13px;
-	color: #888;
-	letter-spacing: 0.2px;
+/* Mũi tên cho nút Prev – CSS border arrow, không phụ thuộc font/SVG */
+.namanh-portfolio-pagination .namanh-page-prev::before {
+	content: '';
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	border-left: 2.5px solid currentColor;
+	border-bottom: 2.5px solid currentColor;
+	transform: rotate(45deg) translate(2px, -1px);
+	flex-shrink: 0;
+}
+
+/* Mũi tên cho nút Next */
+.namanh-portfolio-pagination .namanh-page-next::after {
+	content: '';
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	border-right: 2.5px solid currentColor;
+	border-top: 2.5px solid currentColor;
+	transform: rotate(45deg) translate(-2px, 1px);
+	flex-shrink: 0;
+}
+
+/* ── Loading overlay ── */
+.namanh-portfolio-grid-area {
+	position: relative;
+}
+
+.namanh-portfolio-grid-area.is-loading::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.65);
+	z-index: 10;
+	border-radius: 4px;
+}
+
+/* Spinner vòng tròn */
+.namanh-portfolio-grid-area.is-loading::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 44px;
+	height: 44px;
+	margin: -22px 0 0 -22px;
+	border: 4px solid rgba(40, 44, 92, 0.2);
+	border-top-color: #282C5C;
+	border-radius: 50%;
+	z-index: 11;
+	animation: namanh-spin 0.7s linear infinite;
+}
+
+@keyframes namanh-spin {
+	to { transform: rotate(360deg); }
 }
 
 /* Hiệu ứng cuộn text cho nav-top-link */
