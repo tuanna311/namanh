@@ -649,51 +649,111 @@ add_action( 'wp_ajax_nopriv_namanh_portfolio_page', 'namanh_ajax_portfolio_page'
 
 /**
  * Render một portfolio item trong AJAX response
+ * Template phải match với Flatsome gốc (inc/shortcodes/portfolio.php)
  */
 function namanh_render_single_portfolio_item_v2( $post, $atts ) {
 	$columns = isset( $atts['columns'] ) ? absint( $atts['columns'] ) : 3;
 	$col_span = 12 / max( 1, $columns );
 
-	$style          = isset( $atts['style'] )       ? $atts['style']       : 'overlay';
-	$image_hover    = isset( $atts['image_hover'] ) ? $atts['image_hover'] : 'overlay-add-50';
-	$image_hover_alt = isset( $atts['image_hover_alt'] ) ? $atts['image_hover_alt'] : 'zoom';
-	$image_radius   = isset( $atts['image_radius'] )  ? $atts['image_radius'] : '2';
-	$text_align     = isset( $atts['text_align'] )    ? $atts['text_align']    : 'left';
-	$text_size      = isset( $atts['text_size'] )     ? $atts['text_size']     : 'large';
-	$image_size     = isset( $atts['image_size'] )    ? $atts['image_size']    : 'original';
+	// Extract attributes với fallback giống Flatsome
+	$style          = isset( $atts['style'] )       ? $atts['style']       : '';
+	$image_hover    = isset( $atts['image_hover'] ) ? $atts['image_hover'] : '';
+	$image_hover_alt = isset( $atts['image_hover_alt'] ) ? $atts['image_hover_alt'] : '';
+	$image_radius   = isset( $atts['image_radius'] )  ? $atts['image_radius'] : '';
+	$text_align     = isset( $atts['text_align'] )    ? $atts['text_align']    : 'center';
+	$text_size      = isset( $atts['text_size'] )     ? $atts['text_size']     : '';
+	$text_pos       = isset( $atts['text_pos'] )      ? $atts['text_pos']      : '';
+	$text_color     = isset( $atts['text_color'] )    ? $atts['text_color']    : '';
+	$text_hover     = isset( $atts['text_hover'] )    ? $atts['text_hover']    : '';
+	$image_size     = isset( $atts['image_size'] )    ? $atts['image_size']    : 'medium';
+	$image_overlay  = isset( $atts['image_overlay'] ) ? $atts['image_overlay'] : '';
 
+	// Classes setup giống Flatsome
+	$classes_box   = array( 'portfolio-box', 'box', 'has-hover' );
+	$classes_image = array();
+	$classes_text  = array( 'box-text' );
+
+	// Set box style
+	if ( $style ) $classes_box[] = 'box-' . $style;
+	if ( $style == 'overlay' ) $classes_box[] = 'dark';
+	if ( $style == 'shade' ) $classes_box[] = 'dark';
+	if ( $style == 'badge' ) $classes_box[] = 'hover-dark';
+	if ( $text_pos ) $classes_box[] = 'box-text-' . $text_pos;
+	if ( $style == 'overlay' && ! $image_overlay ) $image_overlay = true;
+
+	// Set image styles
+	if ( $image_hover ) $classes_image[] = 'image-' . $image_hover;
+	if ( $image_hover_alt ) $classes_image[] = 'image-' . $image_hover_alt;
+	$classes_image[] = 'image-cover';
+
+	// Text classes
+	if ( $text_hover ) $classes_text[] = 'show-on-hover hover-' . $text_hover;
+	if ( $text_align ) $classes_text[] = 'text-' . $text_align;
+	if ( $text_size ) $classes_text[] = 'is-' . $text_size;
+	if ( $text_color == 'dark' ) $classes_text[] = 'dark';
+
+	// Get post data
 	$thumb_id  = get_post_thumbnail_id( $post->ID );
-	$img_tag   = $thumb_id
-		? wp_get_attachment_image( $thumb_id, $image_size, false, array( 'class' => 'attachment-' . $image_size . ' size-' . $image_size ) )
-		: '';
+	$img_tag   = $thumb_id ? wp_get_attachment_image( $thumb_id, $image_size ) : '';
+	$permalink = get_permalink( $post->ID );
+	$title     = get_the_title( $post->ID );
+	$address   = get_post_meta( $post->ID, '_featured_item_address', true );
 
-	$permalink   = get_permalink( $post->ID );
-	$title       = get_the_title( $post->ID );
+	// Get terms for data-terms attribute
 	$terms       = get_the_terms( $post->ID, 'featured_item_category' );
-	$terms_slugs = '';
+	$terms_data  = '';
+	$terms_list  = '';
 	if ( $terms && ! is_wp_error( $terms ) ) {
-		$slugs = array_map( function( $t ) { return $t->slug; }, $terms );
-		$terms_slugs = implode( ' ', $slugs );
+		$term_names = array();
+		foreach ( $terms as $term ) {
+			$term_names[] = $term->name;
+		}
+		// Format: [&quot;Term1&quot;,&quot;Term2&quot;]
+		$terms_data = '[&quot;' . implode( '&quot;,&quot;', $term_names ) . '&quot;]';
+		// Format: Term1, Term2
+		$terms_list = implode( ', ', $term_names );
 	}
 
-	$item_class = 'col large-' . $col_span . ' portfolio-item';
+	$item_class = 'col large-' . $col_span;
+
+	// CSS inline args
+	$css_args_img = array();
+	if ( $image_radius ) {
+		$css_args_img[] = 'border-radius:' . esc_attr( $image_radius ) . '%;';
+	}
+	$css_args_img_str = ! empty( $css_args_img ) ? ' style="' . implode( ' ', $css_args_img ) . '"' : '';
 
 	ob_start();
 	?>
-	<div class="<?php echo esc_attr( $item_class ); ?>" data-terms="<?php echo esc_attr( $terms_slugs ); ?>">
-		<div class="col-inner">
+	<div class="<?php echo esc_attr( $item_class ); ?>" data-terms="<?php echo $terms_data; ?>">
+		<div class="col-inner"<?php echo $css_args_img_str; ?>>
 			<a href="<?php echo esc_url( $permalink ); ?>" class="plain">
-				<div class="box box-<?php echo esc_attr( $style ); ?> box-text-bottom has-hover dark">
-					<div class="box-image" style="border-radius:<?php echo esc_attr( $image_radius ); ?>%">
-						<div class="image image-<?php echo esc_attr( $image_hover ); ?> image-<?php echo esc_attr( $image_hover_alt ); ?> image-cover">
+				<div class="<?php echo esc_attr( implode( ' ', $classes_box ) ); ?>">
+					<div class="box-image"<?php echo $css_args_img_str; ?>>
+						<div class="<?php echo esc_attr( implode( ' ', $classes_image ) ); ?>">
 							<?php echo $img_tag; ?>
-							<div class="overlay" style="background-color:rgba(0,0,0,.25)"></div>
+							<?php if ( $image_overlay ) { ?>
+								<div class="overlay" style="background-color:<?php echo esc_attr( $image_overlay ); ?>"></div>
+							<?php } ?>
+							<?php if ( $style == 'shade' ) { ?>
+								<div class="shade"></div>
+							<?php } ?>
 						</div>
 					</div>
-					<div class="box-text text-<?php echo esc_attr( $text_align ); ?>">
-						<p class="box-text-inner">
-							<strong class="is-<?php echo esc_attr( $text_size ); ?>"><?php echo esc_html( $title ); ?></strong>
-						</p>
+					<div class="<?php echo esc_attr( implode( ' ', $classes_text ) ); ?>">
+						<div class="box-text-inner">
+							<h6 class="uppercase portfolio-box-title title-du-an2"><?php echo esc_html( $title ); ?></h6>
+							
+							<?php if ( $address ) { ?>
+								<p class="address-duan"><?php echo esc_html( $address ); ?></p>
+							<?php } ?>
+							
+							<p class="uppercase portfolio-box-category is-xsmall op-6">
+								<span class="show-on-hover">
+									<?php echo esc_html( $terms_list ); ?>
+								</span>
+							</p>
+						</div>
 					</div>
 				</div>
 			</a>
