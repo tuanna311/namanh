@@ -3754,7 +3754,7 @@ body .product-main {
 	width: 33px;
 	min-height: 33px;
 	border-radius: 50%;
-	border: 2px solid currentColor;
+	border: 2px solid #282C5C;
 	background: transparent;
 	color: #282C5C;
 	font-size: 14px;
@@ -3767,7 +3767,12 @@ body .product-main {
 
 /* Hover trên số trang (không áp lên nút disabled) */
 .namanh-portfolio-pagination .namanh-page-btn:hover:not(:disabled):not(.active) {
-	background-color: rgba(40, 44, 92, 0.1);
+	background-color: #282C5C;
+}
+
+.namanh-portfolio-pagination .namanh-page-btn:hover:not(:disabled):not(.active) *,
+.namanh-portfolio-pagination .namanh-page-btn:hover:not(:disabled):not(.active) {
+	color: #fff;
 }
 
 /* Trang đang active – nền đặc */
@@ -3776,14 +3781,6 @@ body .product-main {
 	color: #fff;
 	border-color: #282C5C;
 	cursor: default;
-}
-
-/* Nút bị disable (prev/next khi đầu/cuối) */
-.namanh-portfolio-pagination .namanh-page-btn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-	border-color: #aaa;
-	color: #aaa;
 }
 
 /* Mũi tên cho nút Prev – CSS border arrow, không phụ thuộc font/SVG */
