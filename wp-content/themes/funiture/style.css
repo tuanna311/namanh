@@ -7,17 +7,12 @@ Version: 3.0
 */
 
 /*************** ADD CUSTOM CSS HERE.   ***************/
-@font-face {
-	font-family: 'UTM FacebookR KT';
-	src: url('/wp-content/uploads/fonts/UTM-FacebookR-KT.ttf') format('truetype');
-	font-weight: normal;
-	font-style: normal;
-}
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
 body,
 body *,
 html {
-	font-family: 'UTM FacebookR KT', sans-serif !important;
+	font-family: 'Open Sans', sans-serif !important;
 }
 
 ::-webkit-scrollbar-track {
@@ -262,7 +257,14 @@ body .row.about-us-home .col {
 	margin: 0 20px;
 	padding-top: 30px;
 	padding-bottom: 30px;
+	background-color: #fff;
 	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 850px) {
+	body .row.about-us-home .col strong {
+		font-size: 24px;
+	}
 }
 
 body .row.about-us-home .left-before {
@@ -276,6 +278,16 @@ body .left-before {
 	font-weight: 600;
 }
 
+body .cong-nghe-block .left-before {
+	font-size: 169%;
+}
+
+@media (min-width: 992px) {
+	body .cong-nghe-block .left-before {
+		margin: 0;
+	}
+}
+
 body .left-before:before {
 	content: "";
 	height: 100%;
@@ -284,6 +296,30 @@ body .left-before:before {
 	display: block;
 	left: 0;
 	background: currentColor;
+}
+
+@media (max-width: 1114px) {
+	body .left-before {
+		font-size: 17px;
+	}
+
+	body .cong-nghe-block .left-before {
+		font-size: 150%;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1114px) {
+	body .row.about-us-home .col:last-child .col-inner .img-inner {
+		padding-bottom: 90%;
+	}
+	body .row.about-us-home .col:last-child img {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
 }
 
 body .row.about-us-home .col+.col {
@@ -1000,6 +1036,11 @@ body .product-content td:last-child {
 body .product-content td[colspan="2"] {
 	font-weight: bold;
 	font-size: 20px
+}
+
+.woocommerce .products .box-image img,
+.portfolio-page-wrapper .box-image img {
+	aspect-ratio: 1.65;
 }
 
 body #portfolio-content .portfolio-summary.entry-summary {
