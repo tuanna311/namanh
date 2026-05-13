@@ -646,6 +646,55 @@ body .cong-nghe-block .white.button.is-outline:hover {
 	filter: none;
 }
 
+/* =========================
+   LOGO MARQUEE
+========================= */
+
+.logo-tcbc{
+	overflow: hidden;
+	width: 100%;
+	max-width: 600px !important;
+	position: relative;
+}
+
+/* Track */
+.logo-tcbc .col-inner{
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	width: max-content;
+
+	animation: logoMarquee 12s linear infinite alternate;
+}
+
+/* IMPORTANT */
+.logo-tcbc .col-inner > .img{
+	flex: 0 0 auto !important;
+	width: auto !important;
+	min-width: auto !important;
+	margin: 0;
+}
+
+/* Image */
+.logo-tcbc .img img{
+	display: block;
+	width: auto;
+	max-height: 50px;
+	object-fit: contain;
+	padding: 0 20px;
+}
+
+/* Animation */
+@keyframes logoMarquee{
+	from{
+		transform: translateX(0);
+	}
+
+	to{
+		transform: translateX(calc(-100% + 600px));
+	}
+}
+
 /*Chung Chi*/
 
 /*Block Cong Nghe*/
